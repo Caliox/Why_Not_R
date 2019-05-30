@@ -1,0 +1,57 @@
+#####plot原始地图#####
+library(sp)
+library(maptools)
+library(ggsn)     ##提供指北针
+library(legendMap) ## 提供比例尺
+china_map=readShapePoly('D:/R Language/Rworkfiles/shapefile/bou2_4p.shp')  #读取地图空间数据
+#警告提示readShapePoly已废弃，请使用 rgdal::readOGR 或者 sf::st_read
+plot(china_map)
+
+#####设置原始地图#####
+library(ggplot2)
+ggplot(china_map,aes(x=long,y=lat,group=group)) + #坐标设置 ???group
+  geom_polygon(fill="white",colour="grey") +      #fill为填充色，colour为线条色
+  coord_map("polyconic")      #设置投影方式为polyconic
+
+#####加载与拼接行政信息#####
+x <- china_map@data           #读取行政信息
+xs <- data.frame(x,id=seq(0:924)-1)          #含岛屿共925个形状  seq添加id序列
+china_map1 <- fortify(china_map)           #转化为数据框  ???fortify
+library(plyr)
+china_map_data <- join(china_map1, xs, type = "full")       #合并两个数据框
+
+#####读取数据#####
+unique(china_map@data$NAME) #查看加载地图数据中地域字段的名称 ps：待处理数据中第一列字段名必须是NAME
+mymap <- read.csv("D:/R Language/Rworkfiles/地图.csv")
+china_data <- join(china_map_data, mymap, type="full")          #合并两个数据框
+
+#####绘制地图#####
+map<-ggplot(china_data, aes(x = long, y = lat, group = group,fill = 农业生态效率值)) +
+  geom_polygon(colour="grey40") +   #分界线颜色
+  scale_fill_gradient(low="grey",high="steelblue") +  #指定渐变填充色，可使用RGB
+  coord_map("polyconic") +       #指定投影方式为polyconic，获得常见视角中国地图
+  theme(               #清除不需要的元素
+    panel.grid = element_blank(),
+    panel.background = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.title = element_blank(),
+    legend.position = c(0,0.4),#图例坐标位置
+  plot.background = element_blank()
+    )
+north2(map,.82,.88)                   ## 数字是指定指北针的位置
+
+#####添加省名标签#####
+province_city <- read.csv("D:/R Language/Rworkfiles/shapefile/pcity.csv")  #读取省会城市坐标，坐标精度影响标签效果
+ggplot(china_data,aes(long,lat))+               #语法变化
+  geom_polygon(aes(group=group,fill=效率),colour="grey60")+
+  scale_fill_gradient(low="white",high="steelblue") +
+  coord_map("polyconic") +
+  geom_text(aes(x = jd,y = wd,label = name), data =province_city)+
+  theme(
+    panel.grid = element_blank(),
+    panel.background = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.title = element_blank()
+  )
